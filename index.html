@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Muscu</title>
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Muscu">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<style>
+/* Police d'affichage : TeX Gyre Heros Cn Bold (GUST Font License), sous-ensemble renommé « Plaque ». */
+@font-face{font-family:"Plaque";src:url("fonts/plaque-bold.woff") format("woff");font-weight:700;font-style:normal;font-display:block}
+
+:root{
+  --noir:#000000;
+  --graphite:#17191C;
+  --graphite-presse:#1F2226;
+  --acier:#2A2E33;
+  --acier-clair:#3A3F46;
+  --trait:#25282C;
+  --gris:#8E949B;
+  --craie:#F3F1EC;
+  --goupille:#FFC81E;
+  --goupille-presse:#E5B000;
+  --rouge:#FF6B5E;
+  --display:"Plaque","Helvetica Neue",Arial,sans-serif;
+  --text:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --pad:16px;
+  --tabbar-h:54px;
+  --kb:0px;
+}
+*{box-sizing:border-box}
+html{background:var(--noir);color:var(--craie);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html.sheet-open,html.sheet-open body{overflow:hidden}
+body{margin:0;min-height:100vh;font-family:var(--text);font-size:17px;line-height:1.35;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;margin:0;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+a{color:inherit;text-decoration:none;touch-action:manipulation}
+h1,h2,h3,p{margin:0}
+:focus-visible{outline:2px solid var(--goupille);outline-offset:2px}
+.display{font-family:var(--display);font-weight:700}
+
+.status-shim{position:fixed;top:0;left:0;right:0;height:var(--safe-t);background:var(--noir);z-index:40}
+#app{max-width:560px;margin:0 auto;padding:calc(var(--safe-t) + 8px) var(--pad) calc(var(--tabbar-h) + var(--safe-b) + 40px)}
+body.no-tabbar #app{padding-bottom:calc(var(--safe-b) + 40px)}
+
+/* ---------- Titres ---------- */
+.page-head{padding:28px 2px 20px}
+.large-title{font-family:var(--display);font-weight:700;font-size:52px;line-height:.9;letter-spacing:-.005em}
+.subtle{margin-top:10px;color:var(--gris);font-size:15px}
+
+/* ---------- La pile de plaques ---------- */
+.stack{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.plate{display:block;background:var(--graphite);border-radius:4px}
+.stack>.plate:first-child{border-top-left-radius:14px;border-top-right-radius:14px}
+.stack>.plate:last-child{border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+
+/* Accueil : une plaque par séance */
+.session-plate{display:grid;grid-template-columns:84px 1fr;column-gap:12px;align-items:stretch;min-height:142px;padding:20px 16px 18px 18px}
+.session-plate:active{background:var(--graphite-presse)}
+.s-id{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:10px}
+.letter{font-family:var(--display);font-weight:700;font-size:92px;line-height:.72;padding-top:8px}
+.s-body{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0}
+.s-title{font-family:var(--display);font-weight:700;font-size:30px;line-height:1}
+.meta{display:flex;flex-wrap:wrap;column-gap:14px;color:var(--gris);font-size:15px}
+.last{color:var(--gris);font-size:15px}
+.last.live{color:var(--craie)}
+.pin{background:var(--goupille);color:#000;font-size:13px;font-weight:700;line-height:1;padding:7px 9px;border-radius:999px;white-space:nowrap}
+
+/* ---------- Séance ---------- */
+.session-head{padding:0 0 6px}
+.back{display:inline-flex;align-items:center;gap:8px;min-height:44px;margin-left:-4px;padding-right:12px;color:var(--gris);font-size:17px}
+.back:active{color:var(--craie)}
+.session-title{display:flex;align-items:baseline;gap:12px;margin-top:8px;font-family:var(--display);font-weight:700;font-size:34px;line-height:1}
+.session-title .s-letter{color:var(--gris)}
+
+.timer{position:sticky;top:var(--safe-t);z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 calc(-1 * var(--pad));padding:14px var(--pad) 14px;background:var(--noir);box-shadow:0 1px 0 var(--trait)}
+.digits{font-family:var(--display);font-weight:700;font-size:96px;line-height:.8;padding-top:6px;font-variant-numeric:tabular-nums;color:var(--gris);white-space:nowrap}
+.digits.running{color:var(--craie)}
+.digits.long{font-size:70px}
+.digits.flash{animation:flash .5s ease-out}
+@keyframes flash{from{color:var(--goupille)}to{color:var(--craie)}}
+.btn-timer{flex:none;height:60px;min-width:128px;padding:0 24px;border-radius:999px;background:var(--goupille);color:#000;font-weight:700;font-size:18px}
+.btn-timer:active{background:var(--goupille-presse);transform:scale(.97)}
+
+.notice{margin:14px 0 0;padding:14px;border-radius:12px;background:var(--graphite);box-shadow:inset 4px 0 0 var(--goupille)}
+.notice p{font-size:15px;margin-bottom:12px}
+.notice-actions{display:flex;gap:8px}
+.notice-actions button{flex:1;height:44px;border-radius:12px;background:var(--acier);font-weight:600;font-size:15px}
+
+.progress{display:flex;align-items:center;gap:12px;margin:16px 2px 14px}
+.segs{flex:1;display:flex;gap:3px}
+.seg{flex:1;height:6px;border-radius:2px;background:var(--acier)}
+.seg.on{background:var(--goupille)}
+.progress-label{color:var(--gris);font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.ex-hit{display:grid;grid-template-columns:30px 1fr;column-gap:10px;align-items:start;width:100%;padding:16px 14px;text-align:left;border-radius:inherit}
+.ex-hit:active{background:var(--graphite-presse)}
+.ex-num{font-family:var(--display);font-weight:700;font-size:30px;line-height:.8;padding-top:3px;color:var(--gris)}
+.ex.is-done .ex-num{color:var(--craie)}
+.ex-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ex-name{font-size:17px;font-weight:600;line-height:1.22}
+.ex-detail{color:var(--gris);font-size:15px}
+.ex-foot{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:10px}
+.ex-info{display:flex;flex-direction:column;gap:5px;min-width:0}
+.ex-spec{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:14px;row-gap:4px}
+.sets{font-family:var(--display);font-weight:700;font-size:23px;line-height:1}
+.rest{color:var(--gris);font-size:15px}
+.ex-last{color:var(--gris);font-size:14px}
+.ex-action{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:86px;height:42px;padding:0 14px;border-radius:999px;background:var(--acier);font-size:15px;font-weight:600;white-space:nowrap}
+.ex-action.pin-done{background:var(--goupille);color:#000;font-family:var(--display);font-weight:700;font-size:21px;padding-top:2px}
+.ex-action.just{animation:pin-in .38s cubic-bezier(.2,.9,.25,1.2)}
+@keyframes pin-in{from{transform:translateX(18px);opacity:0}to{transform:none;opacity:1}}
+
+.session-actions{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:22px}
+
+/* ---------- Boutons ---------- */
+.btn-primary{display:flex;align-items:center;justify-content:center;width:100%;min-height:58px;padding:0 18px;border-radius:16px;background:var(--goupille);color:#000;font-weight:700;font-size:18px}
+.btn-primary:active{background:var(--goupille-presse)}
+.btn-primary:disabled{background:var(--acier);color:var(--gris);cursor:default}
+.btn-primary.danger{background:var(--rouge)}
+.btn-secondary{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;padding:0 16px;border-radius:16px;background:var(--acier);font-weight:600;font-size:17px}
+.btn-secondary:active{background:var(--acier-clair)}
+.btn-text{min-height:44px;padding:0 12px;color:var(--gris);font-size:16px}
+.btn-text.danger{color:var(--rouge)}
+[hidden]{display:none!important}
+
+/* ---------- Feuille du bas ---------- */
+#sheet-root{position:fixed;inset:0;z-index:60;pointer-events:none}
+#sheet-root.active{pointer-events:auto}
+.backdrop{position:absolute;inset:0;background:rgba(0,0,0,.66);opacity:0;transition:opacity .25s;touch-action:none}
+#sheet-root.open .backdrop{opacity:1}
+.sheet{position:absolute;left:0;right:0;bottom:var(--kb);max-width:560px;margin:0 auto;max-height:calc(100% - var(--safe-t) - 16px - var(--kb));overflow-y:auto;overscroll-behavior:contain;background:var(--graphite);border-radius:22px 22px 0 0;padding:0 20px calc(18px + var(--safe-b));transform:translateY(102%);transition:transform .32s cubic-bezier(.2,.8,.2,1);outline:none}
+#sheet-root.open .sheet{transform:none}
+.grab{padding:8px 0 14px;touch-action:none}
+.grabber{width:40px;height:5px;border-radius:3px;background:var(--acier-clair);margin:0 auto}
+.sheet-title{font-family:var(--display);font-weight:700;font-size:32px;line-height:1}
+.sheet-sub{display:flex;flex-wrap:wrap;column-gap:14px;margin-top:8px;color:var(--gris);font-size:15px}
+.sheet-text{margin:12px 0 22px;color:var(--gris);font-size:17px}
+.sheet .btn-secondary{margin-top:8px}
+.sheet .btn-text{display:block;margin:6px auto 0}
+
+.load{display:grid;grid-template-columns:64px 1fr 64px;align-items:center;gap:10px;margin:26px 0 14px}
+.step{display:flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%;background:var(--acier)}
+.step:active{background:var(--acier-clair)}
+.load-input{width:100%;min-width:0;padding:4px 0 6px;border:0;border-bottom:2px solid var(--acier);border-radius:0;background:transparent;color:var(--craie);caret-color:var(--goupille);text-align:center;font-family:var(--display);font-weight:700;font-size:78px;line-height:1;-webkit-appearance:none;appearance:none}
+.load-input:focus{outline:none;border-bottom-color:var(--goupille)}
+.load-input::placeholder{color:var(--acier-clair)}
+.seg-ctrl{display:flex;gap:2px;width:max-content;margin:0 auto 22px;padding:3px;border-radius:12px;background:var(--noir)}
+.seg-ctrl button{min-width:100px;height:38px;border-radius:9px;color:var(--gris);font-size:15px;font-weight:600}
+.seg-ctrl button[aria-checked="true"]{background:var(--acier);color:var(--craie)}
+.sheet-h3{margin:26px 0 4px;color:var(--gris);font-size:15px;font-weight:600}
+.prev-list{list-style:none;margin:0;padding:0}
+.prev-list li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0;border-top:1px solid var(--trait)}
+.prev-list span{color:var(--gris);font-size:15px}
+.prev-list strong{font-family:var(--display);font-weight:700;font-size:23px;line-height:1}
+.muted{margin-top:6px;color:var(--gris);font-size:15px}
+
+/* ---------- Historique ---------- */
+.month-group+.month-group{margin-top:8px}
+.month{margin:22px 2px 10px;color:var(--gris);font-family:var(--display);font-weight:700;font-size:24px;line-height:1}
+.h-hit{display:grid;grid-template-columns:50px 1fr auto;column-gap:12px;align-items:center;width:100%;padding:16px 16px 16px 16px;text-align:left;border-radius:inherit}
+.h-hit:active{background:var(--graphite-presse)}
+.h-date{display:flex;flex-direction:column}
+.h-day{font-family:var(--display);font-weight:700;font-size:40px;line-height:.8;padding-top:4px}
+.h-wd{margin-top:5px;color:var(--gris);font-size:13px}
+.h-body{display:flex;flex-direction:column;gap:5px;min-width:0}
+.h-title{font-family:var(--display);font-weight:700;font-size:23px;line-height:1}
+.h-letter{color:var(--gris);margin-right:4px}
+.h-meta{display:flex;flex-wrap:wrap;column-gap:14px;color:var(--gris);font-size:15px}
+.chev{color:var(--gris);transition:transform .2s}
+.h-hit[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.h-detail{padding:0 16px 10px}
+.h-detail ol{list-style:none;margin:0;padding:0}
+.h-detail li{display:grid;grid-template-columns:24px 1fr auto;column-gap:10px;align-items:baseline;padding:10px 0;border-top:1px solid var(--trait)}
+.h-detail .n{color:var(--gris);font-family:var(--display);font-weight:700;font-size:18px}
+.h-detail .nm{font-size:15px}
+.h-detail .ld{font-family:var(--display);font-weight:700;font-size:21px;line-height:1;white-space:nowrap}
+.h-detail .btn-text{display:block;margin:4px auto 0}
+
+.empty{padding:24px 18px 18px;border-radius:14px;background:var(--graphite)}
+.empty h2{font-family:var(--display);font-weight:700;font-size:28px;line-height:1}
+.empty p{margin:10px 0 18px;color:var(--gris);font-size:15px}
+
+.backup{margin-top:44px;padding:0 2px}
+.backup h2{font-family:var(--display);font-weight:700;font-size:28px;line-height:1}
+.backup p{margin:10px 0 16px;color:var(--gris);font-size:15px;max-width:62ch}
+.backup .row{display:flex;gap:8px}
+.backup .fineprint{margin:14px 0 0;font-size:13px}
+.backup .warn{color:var(--rouge)}
+
+/* ---------- Barre d'onglets ---------- */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:var(--safe-b);background:rgba(0,0,0,.9);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:0 -1px 0 var(--trait)}
+.tabbar a{flex:1;max-width:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:var(--tabbar-h);color:var(--gris);font-size:11px;font-weight:600}
+.tabbar a[aria-current="page"]{color:var(--craie)}
+.tabbar svg{width:26px;height:26px}
+body.no-tabbar .tabbar{display:none}
+
+/* ---------- Message éphémère ---------- */
+.toast{position:fixed;left:50%;bottom:calc(var(--tabbar-h) + var(--safe-b) + 16px);z-index:70;max-width:calc(100% - 32px);padding:12px 18px;border-radius:999px;background:var(--craie);color:#000;font-size:15px;font-weight:600;text-align:center;opacity:0;transform:translate(-50%,10px);transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+body.no-tabbar .toast{bottom:calc(var(--safe-b) + 24px)}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="status-shim" aria-hidden="true"></div>
+<main id="app"></main>
+
+<nav class="tabbar" id="tabbar" aria-label="Navigation principale">
+  <a href="#seances" data-tab="home">
+    <svg viewBox="0 0 26 26" aria-hidden="true" fill="currentColor"><rect x="3" y="3.5" width="20" height="5" rx="1.6"/><rect x="3" y="10.5" width="20" height="5" rx="1.6"/><rect x="3" y="17.5" width="20" height="5" rx="1.6"/></svg>
+    <span>Séances</span>
+  </a>
+  <a href="#historique" data-tab="history">
+    <svg viewBox="0 0 26 26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5.5" width="19" height="17" rx="3.5"/><path d="M3.5 10.5h19M8.5 3v4.5M17.5 3v4.5"/></svg>
+    <span>Historique</span>
+  </a>
+</nav>
+
+<div id="sheet-root"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+
+const APP_VERSION = '1.0';
+const STORE_KEY = 'muscu.v1';
+const NBSP = ' ';
+
+/* =========================================================
+   Programme — 3 séances, 22 exercices.
+   Les identifiants (id) relient l'historique aux exercices :
+   ne pas les changer quand on renomme un exercice.
+   ========================================================= */
+const PROGRAM = [
+  { id: 'A', name: 'Pecs + Triceps', duration: '≈ 65 min', exercises: [
+    { id: 'chest-press', name: 'Chest press', detail: 'Développé couché à la machine', sets: 4, reps: '6–10', rest: '2 min' },
+    { id: 'developpe-incline-machine', name: 'Développé incliné', detail: 'À la machine', sets: 3, reps: '8–10', rest: '90 s' },
+    { id: 'pec-deck', name: 'Pec deck', detail: 'Butterfly', sets: 3, reps: '10–12', rest: '75 s' },
+    { id: 'ecarte-poulie-bas-haut', name: 'Écarté à la poulie vis-à-vis', detail: 'De bas en haut, pour le haut des pecs', sets: 3, reps: '12–15', rest: '60 s' },
+    { id: 'dips-machine', name: 'Dips à la machine', detail: 'Assis', sets: 3, reps: '8–12', rest: '90 s' },
+    { id: 'extension-triceps-corde', name: 'Extension triceps à la poulie haute', detail: 'Corde', sets: 3, reps: '10–12', rest: '60 s' },
+    { id: 'extension-triceps-nuque', name: 'Extension triceps au-dessus de la tête', detail: 'À la poulie', sets: 3, reps: '12–15', rest: '60 s' },
+  ]},
+  { id: 'B', name: 'Dos + Biceps', duration: '≈ 65 min', exercises: [
+    { id: 'tirage-vertical-large', name: 'Tirage vertical prise large', detail: 'Ou tractions assistées à la machine', sets: 4, reps: '8–10', rest: '2 min' },
+    { id: 'rowing-machine-appui', name: 'Rowing assis à la machine', detail: 'Appui poitrine', sets: 4, reps: '8–10', rest: '2 min' },
+    { id: 'tirage-horizontal-serre', name: 'Tirage horizontal à la poulie basse', detail: 'Prise serrée', sets: 3, reps: '10–12', rest: '90 s' },
+    { id: 'pull-over-poulie', name: 'Pull-over à la poulie haute', detail: 'Bras tendus', sets: 3, reps: '12–15', rest: '60 s' },
+    { id: 'extension-lombaire', name: 'Extension lombaire', detail: 'Banc à 45° ou machine', sets: 3, reps: '12–15', rest: '60 s' },
+    { id: 'curl-pupitre-machine', name: 'Curl biceps à la machine', detail: 'Pupitre', sets: 4, reps: '8–12', rest: '75 s' },
+    { id: 'curl-marteau-corde', name: 'Curl marteau à la poulie basse', detail: 'Corde', sets: 3, reps: '10–12', rest: '60 s' },
+  ]},
+  { id: 'C', name: 'Épaules + Abdos', duration: '≈ 70 min', exercises: [
+    { id: 'shoulder-press', name: 'Shoulder press', detail: 'Développé épaules à la machine', sets: 4, reps: '8–10', rest: '2 min' },
+    { id: 'elevations-laterales-machine', name: 'Élévations latérales', detail: 'À la machine', sets: 4, reps: '12–15', rest: '60 s' },
+    { id: 'oiseau-machine', name: 'Oiseau à la machine', detail: 'Reverse pec deck', sets: 3, reps: '12–15', rest: '60 s' },
+    { id: 'face-pull', name: 'Face pull', detail: 'Poulie haute, corde', sets: 3, reps: '15', rest: '60 s' },
+    { id: 'crunch-machine', name: 'Crunch à la machine', detail: '', sets: 3, reps: '12–15', rest: '60 s' },
+    { id: 'releves-jambes-chaise', name: 'Relevés de jambes', detail: 'À la chaise romaine', sets: 3, reps: '10–15', rest: '60 s' },
+    { id: 'bucheron-poulie', name: 'Bûcheron à la poulie', detail: 'Woodchopper', sets: 3, reps: '12 par côté', rest: '45 s' },
+    { id: 'planche', name: 'Planche', detail: '', sets: 3, reps: '45–60 s', rest: '45 s' },
+  ]},
+];
+const SESSIONS = Object.fromEntries(PROGRAM.map(s => [s.id, s]));
+const EXERCISES = {};
+PROGRAM.forEach(s => s.exercises.forEach((ex, i) => { EXERCISES[ex.id] = Object.assign({ sessionId: s.id, index: i }, ex); }));
+
+/* =========================================================
+   Données (stockées sur le téléphone, dans localStorage)
+   ========================================================= */
+let storageOK = true;
+function defaultState() {
+  return { v: 1, timerStart: null, timerFirst: null, timerSession: null, drafts: {}, history: [], units: {}, lastExport: null };
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return Object.assign(defaultState(), JSON.parse(raw));
+  } catch (e) { storageOK = false; }
+  return defaultState();
+}
+let state = loadState();
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch (e) { storageOK = false; }
+}
+let persistAsked = false;
+function askPersist() {
+  if (persistAsked) return;
+  persistAsked = true;
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
+}
+
+/* ---------- Mise en forme ---------- */
+const nf = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+const dfShort = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+const dfWeekday = new Intl.DateTimeFormat('fr-FR', { weekday: 'short' });
+const dfMonth = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+const dfLong = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const pad = n => String(n).padStart(2, '0');
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const nb = s => String(s).replace(/ /g, NBSP);
+const nbh = s => String(s).replace(/-/g, '‑'); // trait d'union insécable : pas de coupure « vis-à- / vis »
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function fmtLoad(load, unit) {
+  if (load == null) return 'Sans charge';
+  return unit === 'plaque' ? 'Plaque' + NBSP + nf.format(load) : nf.format(load) + NBSP + 'kg';
+}
+function fmtElapsed(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+}
+function fmtDuration(ms) {
+  const min = Math.max(1, Math.round(ms / 60000));
+  return min < 60 ? min + NBSP + 'min' : Math.floor(min / 60) + NBSP + 'h' + NBSP + pad(min % 60);
+}
+function parseLoad(str) {
+  const v = parseFloat(String(str).replace(/\s/g, '').replace(',', '.'));
+  if (!isFinite(v) || v < 0) return null;
+  return Math.min(9999, Math.round(v * 100) / 100);
+}
+const inputValue = load => (load == null ? '' : String(load).replace('.', ','));
+const plural = (n, one, many) => `${n}${NBSP}${n > 1 ? many : one}`;
+
+/* ---------- Lectures ---------- */
+function previousLoads(exId, limit) {
+  const out = [];
+  for (const h of state.history) {
+    const e = h.entries.find(x => x.exId === exId);
+    if (e) { out.push({ date: h.completedAt, load: e.load, unit: e.unit }); if (out.length >= limit) break; }
+  }
+  return out;
+}
+function lastDone(sid) { const h = state.history.find(x => x.sessionId === sid); return h ? h.completedAt : null; }
+function weekStart() { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); }
+function sessionsThisWeek() { const ws = weekStart(); return state.history.filter(h => h.completedAt >= ws).length; }
+function nextSessionId() {
+  if (Object.keys(state.drafts).length) return null;
+  const last = state.history[0];
+  if (!last) return PROGRAM[0].id;
+  const i = PROGRAM.findIndex(s => s.id === last.sessionId);
+  return PROGRAM[(i + 1) % PROGRAM.length].id;
+}
+function lastActivity(d) {
+  const ats = Object.values(d.entries).map(e => e.at || 0);
+  return ats.length ? Math.max(...ats) : d.startedAt;
+}
+const STALE_MS = 12 * 3600 * 1000;
+const TIMER_MAX_MS = 4 * 3600 * 1000;
+
+/* ---------- Écritures ---------- */
+function setEntry(sid, exId, load, unit) {
+  let d = state.drafts[sid];
+  if (!d) {
+    // Début de séance = premier appui sur le chrono dans cette séance (sinon : maintenant)
+    const fromTimer = state.timerSession === sid && state.timerFirst && Date.now() - state.timerFirst < TIMER_MAX_MS;
+    d = state.drafts[sid] = { startedAt: fromTimer ? state.timerFirst : Date.now(), entries: {} };
+  }
+  d.entries[exId] = { load, unit, at: Date.now() };
+  state.units[exId] = unit;
+  save();
+  askPersist();
+}
+function removeEntry(sid, exId) {
+  const d = state.drafts[sid];
+  if (!d) return;
+  delete d.entries[exId];
+  if (!Object.keys(d.entries).length) delete state.drafts[sid];
+  save();
+}
+function stopTimerFor(sid) {
+  if (state.timerSession === sid) { state.timerStart = null; state.timerFirst = null; state.timerSession = null; }
+}
+function finishSession(sid, completedAt) {
+  const s = SESSIONS[sid], d = state.drafts[sid];
+  if (!d) return null;
+  const entries = s.exercises.filter(ex => d.entries[ex.id]).map(ex => ({
+    exId: ex.id, name: ex.name, load: d.entries[ex.id].load, unit: d.entries[ex.id].unit,
+  }));
+  const rec = { id: 'h' + Date.now().toString(36), sessionId: sid, sessionName: s.name, startedAt: d.startedAt, completedAt: completedAt || Date.now(), entries };
+  state.history.push(rec);
+  state.history.sort((a, b) => b.completedAt - a.completedAt);
+  delete state.drafts[sid];
+  stopTimerFor(sid);
+  save();
+  return rec;
+}
+function discardDraft(sid) { delete state.drafts[sid]; stopTimerFor(sid); save(); }
+
+/* =========================================================
+   Interface
+   ========================================================= */
+const app = document.getElementById('app');
+const tabbar = document.getElementById('tabbar');
+const toastEl = document.getElementById('toast');
+const ui = { expanded: new Set(), justValidated: null };
+
+const ICON = {
+  back: '<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chev: '<svg width="9" height="15" viewBox="0 0 9 15" aria-hidden="true"><path d="m1.5 1.5 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  minus: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  plus: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+};
+
+let toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+
+// Adresses : #seances (accueil), #seance-a / #seance-b / #seance-c, #historique
+function route() {
+  const h = (location.hash || '').slice(1).toLowerCase();
+  const m = h.match(/^seance-([a-z])$/);
+  if (m && SESSIONS[m[1].toUpperCase()]) return { name: 'session', sid: m[1].toUpperCase() };
+  if (h === 'historique') return { name: 'history' };
+  return { name: 'home' };
+}
+const sessionHref = sid => '#seance-' + sid.toLowerCase();
+
+function render() {
+  const r = route();
+  stopTicker();
+  document.body.classList.toggle('no-tabbar', r.name === 'session');
+  if (r.name === 'session') renderSession(r.sid);
+  else if (r.name === 'history') renderHistory();
+  else renderHome();
+  tabbar.querySelectorAll('a').forEach(a => {
+    if (a.dataset.tab === r.name) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+}
+
+/* ---------- Accueil : liste des séances ---------- */
+function renderHome() {
+  const next = nextSessionId();
+  const n = sessionsThisWeek();
+  app.innerHTML = `
+    <header class="page-head">
+      <h1 class="large-title">Séances</h1>
+      <p class="subtle">Cette semaine${NBSP}: ${plural(n, 'séance', 'séances')} sur 3</p>
+    </header>
+    <nav class="stack" aria-label="Séances du programme">
+      ${PROGRAM.map(s => sessionPlate(s, next)).join('')}
+    </nav>`;
+}
+function sessionPlate(s, next) {
+  const d = state.drafts[s.id];
+  const done = d ? Object.keys(d.entries).length : 0;
+  const last = lastDone(s.id);
+  const tag = d ? '<span class="pin">En cours</span>' : s.id === next ? '<span class="pin">Suivante</span>' : '';
+  const lastLine = d
+    ? `<span class="last live">Validés${NBSP}: ${done}/${s.exercises.length}</span>`
+    : `<span class="last">${last ? 'Dernière fois' + NBSP + ': ' + dfShort.format(last) : 'Pas encore faite'}</span>`;
+  return `
+    <a class="plate session-plate" href="${sessionHref(s.id)}">
+      <span class="s-id"><span class="letter" aria-hidden="true">${s.id}</span>${tag}</span>
+      <span class="s-body">
+        <span class="s-title">${esc(s.name)}</span>
+        <span class="meta"><span>${s.exercises.length} exercices</span><span>${nb(s.duration)}</span></span>
+        ${lastLine}
+      </span>
+    </a>`;
+}
+
+/* ---------- Séance : chrono + exercices ---------- */
+function renderSession(sid) {
+  const s = SESSIONS[sid];
+  const d = state.drafts[sid];
+  if (state.timerStart && Date.now() - state.timerStart > TIMER_MAX_MS) { state.timerStart = null; state.timerFirst = null; state.timerSession = null; save(); }
+  const done = d ? Object.keys(d.entries).length : 0;
+  const total = s.exercises.length;
+  const stale = d && Date.now() - lastActivity(d) > STALE_MS;
+  app.innerHTML = `
+    <header class="session-head">
+      <a class="back" href="#seances">${ICON.back}<span>Séances</span></a>
+      <h1 class="session-title"><span class="s-letter">${s.id}</span><span>${esc(s.name)}</span></h1>
+    </header>
+    <section class="timer" aria-label="Chronomètre">
+      <span class="digits" id="digits" role="timer">00:00</span>
+      <button class="btn-timer" id="btn-timer" data-action="timer">${state.timerStart ? 'Relancer' : 'Lancer'}</button>
+    </section>
+    ${stale ? `
+    <div class="notice" role="note">
+      <p>Cette séance a été commencée le ${dfShort.format(d.startedAt)} et n’a pas été terminée.</p>
+      <div class="notice-actions">
+        <button data-action="finish-stale">L’enregistrer</button>
+        <button data-action="discard">L’abandonner</button>
+      </div>
+    </div>` : ''}
+    <div class="progress" role="progressbar" aria-label="Exercices validés" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}">
+      <span class="segs" aria-hidden="true">${s.exercises.map(ex => `<span class="seg${d && d.entries[ex.id] ? ' on' : ''}"></span>`).join('')}</span>
+      <span class="progress-label">Validés${NBSP}: ${done}/${total}</span>
+    </div>
+    <ol class="stack exercises">
+      ${s.exercises.map((ex, i) => exercisePlate(ex, i, d)).join('')}
+    </ol>
+    <div class="session-actions">
+      <button class="btn-primary" data-action="finish"${done ? '' : ' disabled'}>Terminer la séance</button>
+      ${d ? '<button class="btn-text" data-action="discard">Abandonner la séance</button>' : ''}
+    </div>`;
+  ui.justValidated = null;
+  startTicker();
+}
+function exercisePlate(ex, i, d) {
+  const e = d && d.entries[ex.id];
+  const prev = previousLoads(ex.id, 1)[0];
+  const just = e && ui.justValidated === ex.id ? ' just' : '';
+  const label = `${ex.name}${NBSP}: ${e ? 'validé, ' + fmtLoad(e.load, e.unit) : 'à valider'}`;
+  return `
+    <li class="plate ex${e ? ' is-done' : ''}">
+      <button class="ex-hit" data-action="open-ex" data-ex="${ex.id}" aria-label="${esc(label)}">
+        <span class="ex-num" aria-hidden="true">${i + 1}</span>
+        <span class="ex-body">
+          <span class="ex-name">${esc(nbh(ex.name))}</span>
+          ${ex.detail ? `<span class="ex-detail">${esc(nbh(ex.detail))}</span>` : ''}
+          <span class="ex-foot">
+            <span class="ex-info">
+              <span class="ex-spec"><span class="sets">${ex.sets}${NBSP}×${NBSP}${esc(nb(ex.reps))}</span><span class="rest">Repos ${esc(nb(ex.rest))}</span></span>
+              <span class="ex-last">${prev ? 'Dernière fois' + NBSP + ': ' + fmtLoad(prev.load, prev.unit) : 'Première fois'}</span>
+            </span>
+            <span class="ex-action${e ? ' pin-done' + just : ''}">${e ? fmtLoad(e.load, e.unit) : 'Valider'}</span>
+          </span>
+        </span>
+      </button>
+    </li>`;
+}
+
+/* ---------- Chronomètre : un seul bouton, repart de 0 ---------- */
+let ticker = null;
+function tick() {
+  const dg = document.getElementById('digits');
+  if (!dg) { stopTicker(); return; }
+  const running = !!state.timerStart;
+  const txt = running ? fmtElapsed(Date.now() - state.timerStart) : '00:00';
+  if (dg.textContent !== txt) dg.textContent = txt;
+  dg.classList.toggle('running', running);
+  dg.classList.toggle('long', txt.length > 5);
+}
+function startTicker() { stopTicker(); tick(); ticker = setInterval(tick, 250); }
+function stopTicker() { if (ticker) { clearInterval(ticker); ticker = null; } }
+function onTimer(sid) {
+  const now = Date.now();
+  if (state.timerSession !== sid || !state.timerFirst || now - state.timerFirst > TIMER_MAX_MS) state.timerFirst = now;
+  state.timerStart = now;
+  state.timerSession = sid;
+  save();
+  const btn = document.getElementById('btn-timer');
+  if (btn) btn.textContent = 'Relancer';
+  const dg = document.getElementById('digits');
+  if (dg) { dg.classList.remove('flash'); void dg.offsetWidth; dg.classList.add('flash'); }
+  tick();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+
+/* ---------- Feuille du bas (générique) ---------- */
+const sheetRoot = document.getElementById('sheet-root');
+let sheet = null;
+const sheetEl = () => sheetRoot.querySelector('.sheet');
+const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function openSheet(html, opts) {
+  if (sheet) closeSheet(true);
+  sheet = Object.assign({}, opts);
+  sheetRoot.innerHTML = `
+    <div class="backdrop" data-action="dismiss"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabindex="-1">
+      <div class="grab" data-grab><div class="grabber"></div></div>
+      ${html}
+    </div>`;
+  sheetRoot.classList.add('active');
+  document.documentElement.classList.add('sheet-open');
+  requestAnimationFrame(() => requestAnimationFrame(() => sheetRoot.classList.add('open')));
+  const el = sheetEl();
+  enableDragToClose(el);
+  el.focus({ preventScroll: true });
+  return el;
+}
+function closeSheet(immediate) {
+  if (!sheet) return;
+  const s = sheet;
+  sheet = null;
+  if (s.onClose) s.onClose();
+  const el = sheetEl();
+  if (el && document.activeElement && el.contains(document.activeElement)) document.activeElement.blur();
+  sheetRoot.classList.remove('open');
+  document.documentElement.classList.remove('sheet-open');
+  const clear = () => { if (!sheet) { sheetRoot.classList.remove('active'); sheetRoot.innerHTML = ''; } };
+  if (immediate || reduceMotion()) clear(); else setTimeout(clear, 320);
+}
+function enableDragToClose(el) {
+  let y0 = null, dy = 0;
+  el.addEventListener('touchstart', e => {
+    if (!e.target.closest('[data-grab], .sheet-title, .sheet-sub')) return;
+    y0 = e.touches[0].clientY; dy = 0; el.style.transition = 'none';
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    el.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+  const end = () => {
+    if (y0 == null) return;
+    el.style.transition = ''; el.style.transform = '';
+    y0 = null;
+    if (dy > 90) closeSheet();
+  };
+  el.addEventListener('touchend', end);
+  el.addEventListener('touchcancel', end);
+}
+function confirmSheet({ title, message, confirm, cancel, danger }) {
+  return new Promise(resolve => {
+    let settled = false;
+    const settle = v => { if (!settled) { settled = true; resolve(v); } };
+    openSheet(`
+      <h2 class="sheet-title" id="sheet-title">${esc(title)}</h2>
+      <p class="sheet-text">${esc(message)}</p>
+      <button class="btn-primary${danger ? ' danger' : ''}" data-action="yes">${esc(confirm)}</button>
+      <button class="btn-secondary" data-action="no">${esc(cancel)}</button>`, {
+      onAction(a) {
+        if (a === 'yes') { settle(true); closeSheet(); }
+        if (a === 'no') { settle(false); closeSheet(); }
+      },
+      onClose() { settle(false); },
+    });
+  });
+}
+
+/* ---------- Validation d'un exercice ---------- */
+function openExercise(sid, exId) {
+  const ex = EXERCISES[exId];
+  if (!ex) return;
+  const d = state.drafts[sid];
+  const e = d && d.entries[exId];
+  const prevs = previousLoads(exId, 6);
+  let unit = e ? e.unit : (state.units[exId] || (prevs[0] && prevs[0].unit) || 'kg');
+  const start = e ? e.load : (prevs[0] ? prevs[0].load : null);
+  const el = openSheet(`
+    <h2 class="sheet-title" id="sheet-title">${esc(nbh(ex.name))}</h2>
+    <p class="sheet-sub"><span>${ex.sets}${NBSP}×${NBSP}${esc(nb(ex.reps))}</span><span>Repos ${esc(nb(ex.rest))}</span></p>
+    <div class="load">
+      <button class="step" data-action="step" data-dir="-1" aria-label="Diminuer la charge">${ICON.minus}</button>
+      <input class="load-input" id="load-input" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="0" aria-label="Charge utilisée" value="${inputValue(start)}">
+      <button class="step" data-action="step" data-dir="1" aria-label="Augmenter la charge">${ICON.plus}</button>
+    </div>
+    <div class="seg-ctrl" role="radiogroup" aria-label="Unité">
+      <button role="radio" data-action="unit" data-unit="kg" aria-checked="${unit === 'kg'}">kg</button>
+      <button role="radio" data-action="unit" data-unit="plaque" aria-checked="${unit === 'plaque'}">Plaque</button>
+    </div>
+    <button class="btn-primary" data-action="validate" id="btn-validate">Valider</button>
+    <button class="btn-secondary" data-action="validate-empty" id="btn-empty">Valider sans charge</button>
+    ${e ? '<button class="btn-text danger" data-action="unvalidate">Retirer la validation</button>' : ''}
+    <h3 class="sheet-h3">Charges précédentes</h3>
+    ${prevs.length
+      ? `<ul class="prev-list">${prevs.map(p => `<li><span>${esc(cap(dfShort.format(p.date)))}</span><strong>${fmtLoad(p.load, p.unit)}</strong></li>`).join('')}</ul>`
+      : '<p class="muted">Première fois sur cet exercice.</p>'}`, {
+    onAction(action, btn) {
+      if (action === 'step') {
+        const step = unit === 'plaque' ? 1 : 2.5;
+        const cur = parseLoad(input.value) || 0;
+        const dir = Number(btn.dataset.dir);
+        const next = dir > 0 ? (Math.floor(cur / step + 1e-9) + 1) * step : (Math.ceil(cur / step - 1e-9) - 1) * step;
+        input.value = inputValue(Math.max(0, Math.round(next * 100) / 100));
+        refresh();
+      } else if (action === 'unit') {
+        unit = btn.dataset.unit;
+        el.querySelectorAll('[data-action="unit"]').forEach(b => b.setAttribute('aria-checked', String(b === btn)));
+        refresh();
+      } else if (action === 'validate') {
+        commit(parseLoad(input.value));
+      } else if (action === 'validate-empty') {
+        commit(null);
+      } else if (action === 'unvalidate') {
+        removeEntry(sid, exId);
+        closeSheet();
+        render();
+        toast('Validation retirée');
+      }
+    },
+  });
+  const input = el.querySelector('#load-input');
+  const btnValidate = el.querySelector('#btn-validate');
+  const btnEmpty = el.querySelector('#btn-empty');
+  function refresh() {
+    const v = parseLoad(input.value);
+    btnValidate.textContent = v == null ? 'Valider sans charge' : 'Valider ' + fmtLoad(v, unit);
+    btnEmpty.hidden = v == null;
+  }
+  function commit(v) {
+    setEntry(sid, exId, v, unit);
+    ui.justValidated = exId;
+    closeSheet();
+    render();
+  }
+  input.addEventListener('input', refresh);
+  input.addEventListener('focus', () => setTimeout(() => { try { input.setSelectionRange(0, input.value.length); } catch (err) {} }, 0));
+  input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } });
+  refresh();
+}
+
+/* ---------- Fin de séance ---------- */
+async function onFinish(sid) {
+  const s = SESSIONS[sid], d = state.drafts[sid];
+  if (!d) return;
+  const done = Object.keys(d.entries).length, total = s.exercises.length;
+  if (done < total) {
+    const ok = await confirmSheet({
+      title: 'Terminer la séance' + NBSP + '?',
+      message: `${done} ${done > 1 ? 'exercices validés' : 'exercice validé'} sur ${total}. Les exercices non validés ne seront pas enregistrés.`,
+      confirm: 'Terminer la séance',
+      cancel: 'Continuer la séance',
+    });
+    if (!ok) return;
+  }
+  const rec = finishSession(sid);
+  showSaved(rec);
+}
+function onFinishStale(sid) {
+  const d = state.drafts[sid];
+  if (!d) return;
+  showSaved(finishSession(sid, lastActivity(d)));
+}
+function showSaved(rec) {
+  if (!rec) return;
+  ui.expanded = new Set([rec.id]);
+  toast('Séance enregistrée');
+  location.hash = '#historique';
+}
+async function onDiscard(sid) {
+  const ok = await confirmSheet({
+    title: 'Abandonner la séance' + NBSP + '?',
+    message: 'Les exercices validés dans cette séance seront effacés. Ton historique ne change pas.',
+    confirm: 'Abandonner la séance',
+    cancel: 'Garder la séance',
+    danger: true,
+  });
+  if (!ok) return;
+  discardDraft(sid);
+  render();
+  toast('Séance abandonnée');
+}
+
+/* ---------- Historique ---------- */
+function renderHistory() {
+  const items = state.history;
+  let body;
+  if (!items.length) {
+    body = `
+      <div class="empty">
+        <h2>Aucune séance terminée</h2>
+        <p>Termine une séance pour la retrouver ici, avec sa date et la charge de chaque exercice.</p>
+        <a class="btn-secondary" href="#seances">Voir les séances</a>
+      </div>`;
+  } else {
+    const groups = [];
+    for (const h of items) {
+      const key = dfMonth.format(h.completedAt);
+      let g = groups[groups.length - 1];
+      if (!g || g.key !== key) groups.push(g = { key, items: [] });
+      g.items.push(h);
+    }
+    body = groups.map(g => `
+      <section class="month-group">
+        <h2 class="month">${esc(cap(g.key))}</h2>
+        <ul class="stack">${g.items.map(historyItem).join('')}</ul>
+      </section>`).join('');
+  }
+  app.innerHTML = `
+    <header class="page-head">
+      <h1 class="large-title">Historique</h1>
+      ${items.length ? `<p class="subtle">${plural(items.length, 'séance terminée', 'séances terminées')}</p>` : ''}
+    </header>
+    ${body}
+    <section class="backup" aria-labelledby="backup-title">
+      <h2 id="backup-title">Sauvegarde</h2>
+      <p>Tes données restent sur ce téléphone. Exporte‑les de temps en temps${NBSP}: si tu supprimes l’app de l’écran d’accueil, elles sont effacées.</p>
+      <div class="row">
+        <button class="btn-secondary" data-action="export">Exporter</button>
+        <button class="btn-secondary" data-action="import">Importer</button>
+      </div>
+      ${storageOK ? '' : '<p class="fineprint warn">Ce navigateur ne conserve pas les données entre deux ouvertures.</p>'}
+      <p class="fineprint">Dernier export${NBSP}: ${state.lastExport ? dfLong.format(state.lastExport) : 'jamais'}. Version ${APP_VERSION}.</p>
+      <input type="file" id="import-file" accept="application/json,.json,text/plain" hidden>
+    </section>`;
+  document.getElementById('import-file').addEventListener('change', onImportFile);
+}
+function historyItem(h) {
+  const open = ui.expanded.has(h.id);
+  const date = new Date(h.completedAt);
+  const total = SESSIONS[h.sessionId] ? SESSIONS[h.sessionId].exercises.length : h.entries.length;
+  const dur = h.startedAt && h.completedAt > h.startedAt ? fmtDuration(h.completedAt - h.startedAt) : '';
+  return `
+    <li class="plate h-item">
+      <button class="h-hit" data-action="toggle-h" data-id="${esc(h.id)}" aria-expanded="${open}">
+        <span class="h-date" aria-label="${esc(dfLong.format(date))}"><span class="h-day">${date.getDate()}</span><span class="h-wd">${esc(dfWeekday.format(date))}</span></span>
+        <span class="h-body">
+          <span class="h-title"><span class="h-letter">${esc(h.sessionId)}</span>${esc(h.sessionName)}</span>
+          <span class="h-meta"><span>${h.entries.length}/${total} exercices</span>${dur ? `<span>${dur}</span>` : ''}</span>
+        </span>
+        <span class="chev" aria-hidden="true">${ICON.chev}</span>
+      </button>
+      ${open ? `
+      <div class="h-detail">
+        <ol>${h.entries.map(e => {
+          const ex = EXERCISES[e.exId];
+          return `<li><span class="n">${ex ? ex.index + 1 : ''}</span><span class="nm">${esc(nbh(e.name))}</span><span class="ld">${fmtLoad(e.load, e.unit)}</span></li>`;
+        }).join('')}</ol>
+        <button class="btn-text danger" data-action="delete-h" data-id="${esc(h.id)}">Supprimer cette séance</button>
+      </div>` : ''}
+    </li>`;
+}
+function toggleHistory(id) {
+  if (ui.expanded.has(id)) ui.expanded.delete(id); else ui.expanded.add(id);
+  render();
+}
+async function onDeleteHistory(id) {
+  const ok = await confirmSheet({
+    title: 'Supprimer cette séance' + NBSP + '?',
+    message: 'Elle disparaîtra de l’historique avec ses charges.',
+    confirm: 'Supprimer la séance',
+    cancel: 'Garder la séance',
+    danger: true,
+  });
+  if (!ok) return;
+  state.history = state.history.filter(h => h.id !== id);
+  save();
+  render();
+  toast('Séance supprimée');
+}
+
+/* ---------- Sauvegarde : export / import ---------- */
+async function exportData() {
+  const payload = { app: 'muscu', version: 1, exportedAt: new Date().toISOString(), history: state.history, drafts: state.drafts, units: state.units };
+  const json = JSON.stringify(payload, null, 2);
+  const name = `muscu-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
+  if (navigator.canShare && navigator.share) {
+    for (const type of ['application/json', 'text/plain']) {
+      let file;
+      try { file = new File([json], name, { type }); } catch (e) { break; }
+      if (!navigator.canShare({ files: [file] })) continue;
+      try { await navigator.share({ files: [file], title: 'Sauvegarde Muscu' }); markExported(); }
+      catch (e) { if (!e || e.name !== 'AbortError') toast('Export impossible, réessaie'); }
+      return;
+    }
+  }
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  markExported();
+}
+function markExported() {
+  state.lastExport = Date.now();
+  save();
+  if (route().name === 'history') render();
+  toast('Sauvegarde exportée');
+}
+function onImportFile(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    let data = null;
+    try { data = JSON.parse(reader.result); } catch (e) {}
+    const clean = sanitizeImport(data);
+    if (!clean) { toast('Ce fichier n’est pas une sauvegarde Muscu'); return; }
+    const ok = await confirmSheet({
+      title: 'Remplacer tes données' + NBSP + '?',
+      message: `La sauvegarde contient ${plural(clean.history.length, 'séance', 'séances')}. Elle remplacera l’historique actuel de ce téléphone.`,
+      confirm: 'Remplacer mes données',
+      cancel: 'Annuler l’import',
+      danger: true,
+    });
+    if (!ok) return;
+    state.history = clean.history;
+    state.drafts = clean.drafts;
+    state.units = clean.units;
+    save();
+    render();
+    toast('Sauvegarde importée');
+  };
+  reader.readAsText(file);
+}
+function sanitizeImport(d) {
+  if (!d || d.app !== 'muscu' || !Array.isArray(d.history)) return null;
+  const num = v => (typeof v === 'number' && isFinite(v) ? v : null);
+  const unitOf = u => (u === 'plaque' ? 'plaque' : 'kg');
+  const history = d.history
+    .filter(h => h && typeof h === 'object' && num(h.completedAt))
+    .map((h, i) => ({
+      id: String(h.id || 'h' + i + Date.now().toString(36)),
+      sessionId: String(h.sessionId || '?').slice(0, 2),
+      sessionName: String(h.sessionName || ''),
+      startedAt: num(h.startedAt),
+      completedAt: num(h.completedAt),
+      entries: Array.isArray(h.entries) ? h.entries.filter(e => e && e.exId).map(e => ({ exId: String(e.exId), name: String(e.name || ''), load: num(e.load), unit: unitOf(e.unit) })) : [],
+    }))
+    .sort((a, b) => b.completedAt - a.completedAt);
+  const drafts = {};
+  if (d.drafts && typeof d.drafts === 'object') {
+    for (const [sid, dr] of Object.entries(d.drafts)) {
+      if (!SESSIONS[sid] || !dr || typeof dr.entries !== 'object') continue;
+      const entries = {};
+      for (const [k, e] of Object.entries(dr.entries)) if (EXERCISES[k] && e) entries[k] = { load: num(e.load), unit: unitOf(e.unit), at: num(e.at) || Date.now() };
+      if (Object.keys(entries).length) drafts[sid] = { startedAt: num(dr.startedAt) || Date.now(), entries };
+    }
+  }
+  const units = {};
+  if (d.units && typeof d.units === 'object') for (const [k, u] of Object.entries(d.units)) units[k] = unitOf(u);
+  return { history, drafts, units };
+}
+
+/* ---------- Événements ---------- */
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+  if (el.closest('#sheet-root')) {
+    if (action === 'dismiss') closeSheet();
+    else if (sheet && sheet.onAction) sheet.onAction(action, el);
+    return;
+  }
+  const r = route();
+  switch (action) {
+    case 'timer': onTimer(r.sid); break;
+    case 'open-ex': openExercise(r.sid, el.dataset.ex); break;
+    case 'finish': onFinish(r.sid); break;
+    case 'finish-stale': onFinishStale(r.sid); break;
+    case 'discard': onDiscard(r.sid); break;
+    case 'toggle-h': toggleHistory(el.dataset.id); break;
+    case 'delete-h': onDeleteHistory(el.dataset.id); break;
+    case 'export': exportData(); break;
+    case 'import': document.getElementById('import-file').click(); break;
+  }
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && sheet) closeSheet(); });
+window.addEventListener('hashchange', () => { closeSheet(true); render(); window.scrollTo(0, 0); });
+
+// Garde la feuille du bas au-dessus du clavier de l'iPhone (seulement pendant la saisie)
+function updateKeyboardOffset() {
+  const vv = window.visualViewport;
+  const typing = document.activeElement && document.activeElement.matches && document.activeElement.matches('input');
+  const kb = vv && typing ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+  document.documentElement.style.setProperty('--kb', kb + 'px');
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', updateKeyboardOffset);
+  window.visualViewport.addEventListener('scroll', updateKeyboardOffset);
+}
+document.addEventListener('focusin', () => setTimeout(updateKeyboardOffset, 60));
+document.addEventListener('focusout', () => setTimeout(updateKeyboardOffset, 60));
+
+// Fonctionnement hors ligne une fois l'app installée
+const secure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+if ('serviceWorker' in navigator && secure) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+
+render();
+})();
+</script>
+</body>
+</html>
