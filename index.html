@@ -12,11 +12,11 @@
 <meta name="apple-mobile-web-app-title" content="Muscu">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <style>
 /* Police d'affichage : TeX Gyre Heros Cn Bold (GUST Font License), sous-ensemble renommé « Plaque ». */
-@font-face{font-family:"Plaque";src:url("fonts/plaque-bold.woff") format("woff");font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:"Plaque";src:url("plaque-bold.woff") format("woff");font-weight:700;font-style:normal;font-display:block}
 
 :root{
   --noir:#000000;
@@ -30,6 +30,7 @@
   --goupille:#FFC81E;
   --goupille-presse:#E5B000;
   --rouge:#FF6B5E;
+  --photo:#E4E0D8;
   --display:"Plaque","Helvetica Neue",Arial,sans-serif;
   --text:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
   --safe-t:env(safe-area-inset-top,0px);
@@ -110,6 +111,12 @@ body.no-tabbar #app{padding-bottom:calc(var(--safe-b) + 40px)}
 .ex-body{display:flex;flex-direction:column;gap:2px;min-width:0}
 .ex-name{font-size:17px;font-weight:600;line-height:1.22}
 .ex-detail{color:var(--gris);font-size:15px}
+.ex-top{display:flex;align-items:flex-start;gap:12px}
+.ex-titles{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ex-thumb{flex:none;width:76px;height:57px;margin-top:2px;border-radius:8px;overflow:hidden;isolation:isolate;background:var(--photo)}
+.ex-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+/* Photos : niveaux de gris, fond blanc fondu dans le fond « craie » */
+.photo{mix-blend-mode:multiply;filter:grayscale(1) contrast(1.06)}
 .ex-foot{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:10px}
 .ex-info{display:flex;flex-direction:column;gap:5px;min-width:0}
 .ex-spec{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:14px;row-gap:4px}
@@ -149,6 +156,14 @@ body.no-tabbar #app{padding-bottom:calc(var(--safe-b) + 40px)}
 .sheet .btn-secondary{margin-top:8px}
 .sheet .btn-text{display:block;margin:6px auto 0}
 
+.ex-media{margin:18px 0 0}
+.frames{position:relative;aspect-ratio:16/10;max-height:25vh;border-radius:14px;overflow:hidden;isolation:isolate;background:var(--photo)}
+.frames img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+/* Alternance départ / arrivée pour montrer le mouvement */
+.frames .f1{opacity:0;animation:movement 2.8s ease-in-out infinite}
+@keyframes movement{0%,36%{opacity:0}50%,86%{opacity:1}100%{opacity:0}}
+.ex-media figcaption{margin-top:8px;color:var(--gris);font-size:13px}
+.ex-media figcaption:empty{display:none}
 .load{display:grid;grid-template-columns:64px 1fr 64px;align-items:center;gap:10px;margin:26px 0 14px}
 .step{display:flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%;background:var(--acier)}
 .step:active{background:var(--acier-clair)}
@@ -210,7 +225,11 @@ body.no-tabbar .tabbar{display:none}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 body.no-tabbar .toast{bottom:calc(var(--safe-b) + 24px)}
 
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important}
+  .frames{display:grid;grid-template-columns:1fr 1fr;aspect-ratio:auto}
+  .frames .f0,.frames .f1{position:static;opacity:1;aspect-ratio:4/3}
+}
 </style>
 </head>
 <body>
@@ -235,7 +254,7 @@ body.no-tabbar .toast{bottom:calc(var(--safe-b) + 24px)}
 (() => {
 'use strict';
 
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
 const STORE_KEY = 'muscu.v1';
 const NBSP = ' ';
 
@@ -274,16 +293,58 @@ const PROGRAM = [
     { id: 'planche', name: 'Planche', detail: '', sets: 3, reps: '45–60 s', rest: '45 s' },
   ]},
 ];
+/* =========================================================
+   Photos indicatives : base libre free-exercise-db
+   (github.com/yuhonas/free-exercise-db, deux photos par exercice :
+   départ et arrivée). Pour chaque exercice, identifiants candidats
+   essayés dans l'ordre ; le premier qui existe est retenu.
+   ========================================================= */
+const PHOTOS = {
+  'chest-press': ['Leverage_Chest_Press', 'Machine_Bench_Press'],
+  'developpe-incline-machine': ['Leverage_Incline_Chest_Press'],
+  'pec-deck': ['Butterfly'],
+  'ecarte-poulie-bas-haut': ['Low_Cable_Crossover', 'Cable_Crossover'],
+  'dips-machine': ['Dip_Machine'],
+  'extension-triceps-corde': ['Triceps_Pushdown_-_Rope_Attachment'],
+  'extension-triceps-nuque': ['Cable_Rope_Overhead_Triceps_Extension'],
+  'tirage-vertical-large': ['Wide-Grip_Lat_Pulldown'],
+  'rowing-machine-appui': ['Leverage_Iso_Row', 'Leverage_High_Row'],
+  'tirage-horizontal-serre': ['Seated_Cable_Rows'],
+  'pull-over-poulie': ['Straight-Arm_Pulldown'],
+  'extension-lombaire': ['Hyperextensions_Back_Extensions'],
+  'curl-pupitre-machine': ['Machine_Preacher_Curls'],
+  'curl-marteau-corde': ['Cable_Hammer_Curls_-_Rope_Attachment'],
+  'shoulder-press': ['Machine_Shoulder_Military_Press', 'Leverage_Shoulder_Press'],
+  'elevations-laterales-machine': ['Cable_Seated_Lateral_Raise', 'Side_Lateral_Raise'],
+  'oiseau-machine': ['Reverse_Machine_Flyes'],
+  'face-pull': ['Face_Pull'],
+  'crunch-machine': ['Ab_Crunch_Machine'],
+  'releves-jambes-chaise': ['Knee_Hip_Raise_On_Parallel_Bars'],
+  'bucheron-poulie': ['Standing_Cable_Wood_Chop'],
+  'planche': ['Plank'],
+};
+// Quand la photo montre une variante de l'exercice prévu
+const PHOTO_NOTES = {
+  Cable_Crossover: 'Photo : variante de haut en bas',
+  Leverage_High_Row: 'Photo : variante en tirage haut',
+  Cable_Seated_Lateral_Raise: 'Photo : variante à la poulie',
+  Side_Lateral_Raise: 'Photo : variante aux haltères',
+};
+const PHOTO_HOSTS = {
+  jsd: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/',
+  raw: 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/',
+};
+
 const SESSIONS = Object.fromEntries(PROGRAM.map(s => [s.id, s]));
 const EXERCISES = {};
-PROGRAM.forEach(s => s.exercises.forEach((ex, i) => { EXERCISES[ex.id] = Object.assign({ sessionId: s.id, index: i }, ex); }));
+PROGRAM.forEach(s => s.exercises.forEach((ex, i) => { EXERCISES[ex.id] = Object.assign({ sessionId: s.id, index: i, photos: PHOTOS[ex.id] || [] }, ex); }));
 
 /* =========================================================
    Données (stockées sur le téléphone, dans localStorage)
    ========================================================= */
 let storageOK = true;
 function defaultState() {
-  return { v: 1, timerStart: null, timerFirst: null, timerSession: null, drafts: {}, history: [], units: {}, lastExport: null };
+  return { v: 1, timerStart: null, timerFirst: null, timerSession: null, drafts: {}, history: [], units: {}, photos: {}, lastExport: null };
 }
 function loadState() {
   try {
@@ -336,6 +397,77 @@ function parseLoad(str) {
 }
 const inputValue = load => (load == null ? '' : String(load).replace('.', ','));
 const plural = (n, one, many) => `${n}${NBSP}${n > 1 ? many : one}`;
+
+/* ---------- Photos ---------- */
+// Une référence de photo s'écrit « hôte:identifiant », par exemple « jsd:Butterfly ».
+const photoUrl = (ref, frame) => {
+  const i = ref.indexOf(':');
+  return PHOTO_HOSTS[ref.slice(0, i)] + encodeURIComponent(ref.slice(i + 1)) + '/' + frame + '.jpg';
+};
+const photoNote = ref => (ref && PHOTO_NOTES[ref.slice(ref.indexOf(':') + 1)]) || '';
+// Références à essayer, dans l'ordre : la photo déjà trouvée, sinon chaque candidat sur chaque hôte
+function photoRefs(ex) {
+  const known = state.photos[ex.id];
+  if (known === null) return [];
+  if (known) return [known];
+  if (navigator.onLine === false) return []; // jamais trouvée et pas de réseau : inutile d'essayer
+  return (PHOTOS[ex.id] || []).flatMap(id => ['jsd:' + id, 'raw:' + id]);
+}
+function photoTag(ex, frame, cls, alt, lazy) {
+  const refs = photoRefs(ex);
+  if (!refs.length) return '';
+  return `<img class="photo ${cls}" src="${photoUrl(refs[0], frame)}" data-refs="${esc(refs.join('|'))}" data-frame="${frame}" alt="${esc(alt)}" crossorigin="anonymous" decoding="async"${lazy ? ' loading="lazy"' : ''}>`;
+}
+// Image introuvable : on passe à la référence suivante, sinon on retire l'emplacement
+document.addEventListener('error', ev => {
+  const img = ev.target;
+  if (!(img instanceof HTMLImageElement) || !img.dataset.refs) return;
+  const refs = img.dataset.refs.split('|');
+  const next = Number(img.dataset.i || 0) + 1;
+  if (next < refs.length) {
+    img.dataset.i = String(next);
+    img.src = photoUrl(refs[next], img.dataset.frame);
+    const cap = img.closest('.ex-media') && img.closest('.ex-media').querySelector('figcaption');
+    if (cap && img.dataset.frame === '0') cap.textContent = photoNote(refs[next]);
+    return;
+  }
+  const box = img.closest('.ex-thumb, .ex-media');
+  img.remove();
+  if (box && !box.querySelector('img')) box.remove();
+}, true);
+
+// Au premier lancement en ligne : trouve la bonne photo de chaque exercice et la met en cache
+async function probe(url) {
+  try {
+    const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    return res.ok ? 'ok' : res.status === 404 ? 'missing' : 'fail';
+  } catch (e) { return 'fail'; }
+}
+let warming = false;
+async function warmPhotos() {
+  if (warming || navigator.onLine === false || !window.fetch) return;
+  warming = true;
+  let changed = false;
+  const queue = Object.values(EXERCISES);
+  async function worker() {
+    for (let ex = queue.shift(); ex; ex = queue.shift()) {
+      const known = state.photos[ex.id];
+      if (known === null) continue;
+      if (known) { await probe(photoUrl(known, 0)); await probe(photoUrl(known, 1)); continue; }
+      let found = null, allMissing = true;
+      for (const ref of photoRefs(ex)) {
+        const r = await probe(photoUrl(ref, 0));
+        if (r === 'ok') { found = ref; break; }
+        if (r === 'fail') allMissing = false;
+      }
+      if (found) { state.photos[ex.id] = found; changed = true; await probe(photoUrl(found, 1)); }
+      else if (allMissing && (PHOTOS[ex.id] || []).length) { state.photos[ex.id] = null; changed = true; }
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  warming = false;
+  if (changed) { save(); if (!sheet) render(); }
+}
 
 /* ---------- Lectures ---------- */
 function previousLoads(exId, limit) {
@@ -524,13 +656,19 @@ function exercisePlate(ex, i, d) {
   const prev = previousLoads(ex.id, 1)[0];
   const just = e && ui.justValidated === ex.id ? ' just' : '';
   const label = `${ex.name}${NBSP}: ${e ? 'validé, ' + fmtLoad(e.load, e.unit) : 'à valider'}`;
+  const thumb = photoTag(ex, 0, 'thumb', '', true);
   return `
     <li class="plate ex${e ? ' is-done' : ''}">
       <button class="ex-hit" data-action="open-ex" data-ex="${ex.id}" aria-label="${esc(label)}">
         <span class="ex-num" aria-hidden="true">${i + 1}</span>
         <span class="ex-body">
-          <span class="ex-name">${esc(nbh(ex.name))}</span>
-          ${ex.detail ? `<span class="ex-detail">${esc(nbh(ex.detail))}</span>` : ''}
+          <span class="ex-top">
+            <span class="ex-titles">
+              <span class="ex-name">${esc(nbh(ex.name))}</span>
+              ${ex.detail ? `<span class="ex-detail">${esc(nbh(ex.detail))}</span>` : ''}
+            </span>
+            ${thumb ? `<span class="ex-thumb" aria-hidden="true">${thumb}</span>` : ''}
+          </span>
           <span class="ex-foot">
             <span class="ex-info">
               <span class="ex-spec"><span class="sets">${ex.sets}${NBSP}×${NBSP}${esc(nb(ex.reps))}</span><span class="rest">Repos ${esc(nb(ex.rest))}</span></span>
@@ -652,9 +790,17 @@ function openExercise(sid, exId) {
   const prevs = previousLoads(exId, 6);
   let unit = e ? e.unit : (state.units[exId] || (prevs[0] && prevs[0].unit) || 'kg');
   const start = e ? e.load : (prevs[0] ? prevs[0].load : null);
+  const f0 = photoTag(ex, 0, 'f0', ex.name + ' : position de départ');
+  const f1 = photoTag(ex, 1, 'f1', ex.name + ' : position d’arrivée');
+  const media = f0 ? `
+    <figure class="ex-media">
+      <div class="frames">${f0}${f1}</div>
+      <figcaption>${esc(photoNote(photoRefs(ex)[0]))}</figcaption>
+    </figure>` : '';
   const el = openSheet(`
     <h2 class="sheet-title" id="sheet-title">${esc(nbh(ex.name))}</h2>
     <p class="sheet-sub"><span>${ex.sets}${NBSP}×${NBSP}${esc(nb(ex.reps))}</span><span>Repos ${esc(nb(ex.rest))}</span></p>
+    ${media}
     <div class="load">
       <button class="step" data-action="step" data-dir="-1" aria-label="Diminuer la charge">${ICON.minus}</button>
       <input class="load-input" id="load-input" type="text" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="0" aria-label="Charge utilisée" value="${inputValue(start)}">
@@ -797,6 +943,7 @@ function renderHistory() {
       </div>
       ${storageOK ? '' : '<p class="fineprint warn">Ce navigateur ne conserve pas les données entre deux ouvertures.</p>'}
       <p class="fineprint">Dernier export${NBSP}: ${state.lastExport ? dfLong.format(state.lastExport) : 'jamais'}. Version ${APP_VERSION}.</p>
+      <p class="fineprint">Photos d’exercices${NBSP}: base libre free‑exercise‑db, chargées depuis internet puis gardées pour l’usage hors ligne.</p>
       <input type="file" id="import-file" accept="application/json,.json,text/plain" hidden>
     </section>`;
   document.getElementById('import-file').addEventListener('change', onImportFile);
@@ -976,6 +1123,9 @@ if ('serviceWorker' in navigator && secure) {
 }
 
 render();
+// Photos : recherche et mise en cache en arrière-plan, sans gêner l'ouverture de l'app
+setTimeout(warmPhotos, 1500);
+window.addEventListener('online', warmPhotos);
 })();
 </script>
 </body>
